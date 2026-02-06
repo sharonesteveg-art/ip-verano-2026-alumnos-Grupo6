@@ -195,4 +195,5 @@ El trabajo debe ser entregado en la fecha estipulada en el cronograma. **Recorda
     - Introducción a GIT: [clic acá](https://www.youtube.com/watch?v=mzHWafbVRyU).
     - Manejo de ramas/branches: [clic acá](https://www.youtube.com/watch?v=BRY9gamL9PE).
     - Merge & resolución de conflictos: [clic acá](https://www.youtube.com/watch?v=9YUaf-uxuRM).
-    - Introducción a JSON: [clic acá](https://www.youtube.com/watch?v=FGG-UTCwlJw).
+    - Introducción a JSON: [clic acá](https://www.youtube.com/watch?v=FGG-UTCwlJw).#   i p - v e r a n o - 2 0 2 6 - a l u m n o s - G r u p o 6  
+ 
