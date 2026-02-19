@@ -4,6 +4,9 @@ from django.shortcuts import redirect, render
 from .layers.services import services
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import logout
+from django.core.paginator import Paginator
+from django.urls import reverse
+from urllib.parse import urlencode
 
 def index_page(request):
     return render(request, 'index.html')
@@ -11,39 +14,79 @@ def index_page(request):
 def home(request):
     """
     Vista principal que muestra la galería de personajes de Los Simpsons.
-    
+
     Esta función debe obtener el listado de imágenes desde la capa de servicios
     y también el listado de favoritos del usuario, para luego enviarlo al template 'home.html'.
     Recordar que los listados deben pasarse en el contexto con las claves 'images' y 'favourite_list'.
     """
+    q = request.GET.get('q', '').strip()
+    status = request.GET.get('status', '').strip()
+
+    # Obtener todas las imágenes y aplicar filtros en memoria (minimalista)
     images = services.getAllImages()
+
+    # FIX: si el filtro viene como 'all' (botón TODOS), asegurarse explícitamente
+    #      de recargar todas las imágenes para evitar que queden filtros previos.
+    if status and status.lower() == 'all':
+        images = services.getAllImages()
+
+    if q:
+        needle = q.lower()
+        images = [img for img in images if img.name and needle in img.name.lower()]
+
+    if status and status.lower() not in ('all', ''):
+        # aceptamos 'Alive' o 'Deceased' (según transport/translator)
+        # comparar case-insensitive y sin espacios para no perder personajes
+        images = [img for img in images if getattr(img, 'status', None) and img.status.strip().lower() == status.strip().lower()]
+
+    # --- Cambio: paginación mínima para mantener filtros al paginar ---
+    # Si status == 'all' mostramos todos en una página para asegurarnos de
+    # que no queden personajes (p. ej. fallecidos) ocultos por la paginación.
+    if status and status.lower() == 'all':
+        per_page = max(1, len(images))
+    else:
+        # Mostrar más resultados por página para filtros (evita ocultar vivos en la primera página)
+        per_page = 20
+    paginator = Paginator(images, per_page)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
     favourite_list = services.getAllFavourites(request)
 
-    return render(request, 'home.html', { 
-        'images': images, 
-        'favourite_list': favourite_list 
+    return render(request, 'home.html', {
+        'images': page_obj.object_list,
+        'favourite_list': favourite_list,
+        'page_obj': page_obj,
+        'q': q,
+        'status': status,
     })
 
 def search(request):
     """
     Busca personajes por nombre.
-    
+
     Se debe implementar la búsqueda de personajes según el nombre ingresado.
     Se debe obtener el parámetro 'query' desde el POST, filtrar las imágenes según el nombre
     y renderizar 'home.html' con los resultados. Si no se ingresa nada, redirigir a 'home'.
     """
-        # Obtener la consulta desde POST
+    # FIX: Había una indentación extra en las líneas siguientes (causaba IndentationError).
+    #      Unifiqué la indentación a 4 espacios y eliminé la indentación inesperada.
+    # --- Cambio: recibir POST antiguo y redirigir a la vista 'home' con GET param q ---
     query = request.POST.get('query', '').strip()
-    
-    if not query:
-        # Si no hay texto, redirige a home
+    status = request.POST.get('status', '').strip()
+    if not query and not status:
         return redirect('home')
-    
-    # TODO: reemplazar por la lógica real de búsqueda
-    images = []  # Aquí iría la lista filtrada según query
-    favourite_list = []  # Lista de favoritos del usuario
-    
-    return render(request, 'home.html', {'images': images, 'favourite_list': favourite_list})
+
+    # Construir params para mantener también el filtro de status si viene
+    params = {}
+    if query:
+        params['q'] = query
+    if status:
+        params['status'] = status
+
+    qs = urlencode(params)
+    # Redirige a home con la query en la URL para mantener filtros y paginación
+    return redirect(f"{reverse('home')}?{qs}")
 
 
 
@@ -56,16 +99,23 @@ def filter_by_status(request):
     Se debe obtener el parámetro 'status' desde el POST, filtrar las imágenes según ese estado
     y renderizar 'home.html' con los resultados. Si no hay estado, redirigir a 'home'.
     """
+    # --- Cambio: recibir POST antiguo y redirigir a 'home' con GET param status ---
+    # --- Cambio: recibir POST antiguo y redirigir a 'home' con GET param status ---
     status = request.POST.get('status', '').strip()
-    
-    if not status:
+    q = request.POST.get('q', '').strip()
+    if not status and not q:
         return redirect('home')
-    
-    # TODO: reemplazar por la lógica real de filtrado
-    images = []  # Lista de personajes filtrados por estado
-    favourite_list = []  # Lista de favoritos del usuario
-    
-    return render(request, 'home.html', {'images': images, 'favourite_list': favourite_list})
+
+    # Construir params para mantener también la búsqueda por nombre si viene
+    params = {}
+    if status:
+        params['status'] = status
+    if q:
+        params['q'] = q
+
+    qs = urlencode(params)
+    # Redirige a home con el filtro de status (y q si aplica)
+    return redirect(f"{reverse('home')}?{qs}")
 
 # Estas funciones se usan cuando el usuario está logueado en la aplicación.
 @login_required

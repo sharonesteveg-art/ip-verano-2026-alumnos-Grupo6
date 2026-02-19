@@ -2,6 +2,7 @@
 
 from app.layers.utilities.card import Card
 from ...config import config
+import random
 
 # Usado cuando la información viene de la API, para transformarla en una Card.
 def fromRequestIntoCard(object):
@@ -11,11 +12,19 @@ def fromRequestIntoCard(object):
     image_size = config.SIMPSONS_IMAGE_SIZE
     image_url = base_url + '/' + image_size + portrait_path
     
+    # FIX: Si la API provee varias frases, elegir una al azar para mostrar UNA sola.
+    #      Esto evita que el template muestre listas y hace la experiencia más limpia.
+    raw_phrases = object.get('phrases', [])
+    if isinstance(raw_phrases, (list, tuple)):
+        phrase = random.choice(raw_phrases) if raw_phrases else ''
+    else:
+        phrase = raw_phrases or ''
+
     card = Card(
         name=object.get('name'),
         gender=object.get('gender'),
         status=object.get('status'),
-        phrases=object.get('phrases', []),
+        phrases=phrase,
         occupation=object.get('occupation'),
         image=image_url,
         age=object.get('age')

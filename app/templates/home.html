@@ -2,30 +2,44 @@
 <main>
     <h1 class="text-center">Buscador de personajes de Los Simpsons</h1>
 
-    <div class="d-flex justify-content-center" style="margin-bottom: 1%">
-        <!-- Buscador del sitio -->
-         <form class="d-flex" action="{% url 'buscar' %}" method="POST" id="search-form">
-            {% csrf_token %}
-            <input class="form-control me-2" type="search" name="query" placeholder="Homer, Marge, Bart, Lisa..." aria-label="Search">
+    <!-- Búsqueda por nombre (GET) -->
+    <div class="d-flex justify-content-center mb-3">
+        <form class="d-flex gap-2" action="{% url 'home' %}" method="GET" id="search-form">
+            <input class="form-control me-2" type="search" name="q" placeholder="Homer, Marge, Bart, Lisa..." aria-label="Search" value="{{ q }}">
             <button class="btn btn-outline-success" type="submit">Buscar</button>
+            <a href="{% url 'home' %}" class="btn btn-outline-secondary ms-2">Limpiar</a>
         </form>
-        <div id="loading-spinner" style="display:none; text-align:center; margin-bottom:20px;">
-            <div class="spinner"></div>
-            <p>Buscando personajes, por favor espere...</p>
-        </div>
     </div>
 
-    <div class="d-flex gap-1 col-2 mx-auto mb-3">
+    <!-- Cuadros grandes para filtrar por estado (Vivos / Fallecidos / Todos) -->
+    <div class="d-flex gap-3 justify-content-center mb-3">
         <form method="post" action="{% url 'filter_by_status' %}">
             {% csrf_token %}
             <input type="hidden" name="status" value="Alive">
-            <button type="submit" class="btn btn-success">Vivos</button>
+            <input type="hidden" name="q" value="{{ q }}">
+            <button type="submit" class="btn btn-success border shadow p-3 text-center text-white" style="width:180px; height:90px;">
+                <div class="fw-bold">VIVOS</div>
+                <div>Mostrar vivos</div>
+            </button>
         </form>
 
         <form method="post" action="{% url 'filter_by_status' %}">
             {% csrf_token %}
             <input type="hidden" name="status" value="Deceased">
-            <button type="submit" class="btn btn-secondary">Fallecidos</button>
+            <input type="hidden" name="q" value="{{ q }}">
+            <button type="submit" class="btn btn-danger border shadow p-3 text-center text-white" style="width:180px; height:90px;">
+                <div class="fw-bold">FALLECIDOS</div>
+                <div>Mostrar fallecidos</div>
+            </button>
+        </form>
+
+        <form method="get" action="{% url 'home' %}">
+            <input type="hidden" name="status" value="all">
+            <input type="hidden" name="q" value="{{ q }}">
+            <button type="submit" class="btn btn-warning border shadow p-3 text-center" style="width:180px; height:90px;">
+                <div class="fw-bold">TODOS</div>
+                <div>Mostrar todos</div>
+            </button>
         </form>
     </div>
 
@@ -44,7 +58,8 @@
                 <!-- Card:
                      h-100 -> hace que la card ocupe toda la altura de la columna
                      la clase de borde se elige según el estado -->
-                <div class="card h-100 {% if img.status == 'Alive' %}border-success{% elif img.status == 'Deceased' %}border-secondary{% else %}border-warning{% endif %}">
+                {% comment %} Si el filtro está en 'all' mostramos todas las cards con borde amarillo. {% endcomment %}
+                <div class="card h-100 {% if status == 'all' %}border-warning{% elif img.status == 'Alive' %}border-success{% elif img.status == 'Deceased' %}border-danger{% else %}border-warning{% endif %}">
                     <div class="row no-gutters">
                         <!-- Columna interna para la imagen (dentro de la card) -->
                         <div class="col-4 d-flex align-items-center justify-content-center p-3">
@@ -65,7 +80,7 @@
                                 {% if img.age %}
                                 <p class="card-text"><small class="text-body-secondary">🎂 Edad: {{ img.age }} años</small></p>
                                 {% endif %}
-                                <p class="card-text"><small class="text-body-secondary">{% if img.status == 'Alive' %}🟢{% elif img.status == 'Deceased' %}⚫{% else %}❓{% endif %} Estado: {{ img.status }}</small></p>
+                                <p class="card-text"><small class="text-body-secondary">{% if status == 'all' %}🟡{% elif img.status == 'Alive' %}🟢{% elif img.status == 'Deceased' %}🔴{% else %}❓{% endif %} Estado: {{ img.status }}</small></p>
                                 <p class="card-text"><small class="text-body-secondary">💼 Ocupación: {{ img.occupation }}</small></p>
                             </div>
 
@@ -95,6 +110,29 @@
             {% endfor %}
         {% endif %}
     </div>
+        {% if page_obj and page_obj.paginator.num_pages > 1 %}
+        <nav aria-label="Page navigation">
+            <ul class="pagination justify-content-center mt-4">
+                {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ q }}&status={{ status }}&page={{ page_obj.previous_page_number }}">Anterior</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Anterior</span></li>
+                {% endif %}
+
+                <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+
+                {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?q={{ q }}&status={{ status }}&page={{ page_obj.next_page_number }}">Siguiente</a>
+                    </li>
+                {% else %}
+                    <li class="page-item disabled"><span class="page-link">Siguiente</span></li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
 </main>
 
 <style>
@@ -115,9 +153,13 @@
 </style>
 
 <script>
-document.getElementById("search-form").addEventListener("submit", function() {
-    document.getElementById("loading-spinner").style.display = "block";
-});
+var sf = document.getElementById("search-form");
+if (sf) {
+    sf.addEventListener("submit", function() {
+        var spinner = document.getElementById("loading-spinner");
+        if (spinner) spinner.style.display = "block";
+    });
+}
 </script>
 
  
