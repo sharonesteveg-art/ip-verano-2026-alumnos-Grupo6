@@ -1,0 +1,17 @@
+<!-- registro.html -->
+<h2>Registro de Usuario</h2>
+
+<!-- Formulario POST -->
+<form method="POST">
+    {% csrf_token %} <!-- Protección contra CSRF -->
+    
+    <!-- Muestra los campos del formulario (nombre, usuario, email, contraseña, etc.) -->
+    {{ form.as_p }}
+
+    <button type="submit">Registrarse</button>
+</form>
+
+<!-- Mostrar mensajes de éxito o error -->
+{% for message in messages %}
+    <p>{{ message }}</p>
+{% endfor %}
